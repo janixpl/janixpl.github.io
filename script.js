@@ -12,7 +12,7 @@ for (let i = 0; i < values.length; i++) {
     }
 }
 
-const sphereSizes = x.map((_, i) => 5 * (x[i] + y[i] + z[i]));
+const sphereSizes = x.map((_, i) => (x[i] + y[i] + z[i])**1.8);
 
 const data = [
     {
