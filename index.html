@@ -4,14 +4,12 @@
   <title>Story points</title>
   <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
   <script defer src="https://pyscript.net/latest/pyscript.js"></script>
-  
-  <py-env>
-  - matplotlib
-  </py-env>
 </head>
 <body>
-  <div id="plot"></div>
-  <h1>SCRUM presentation</h1>
+  <py-config>
+    packages = ["matplotlib"]
+  </py-config>
+
   <py-script>
 import matplotlib.pyplot as plt
 from itertools import product 
@@ -46,11 +44,11 @@ ax.set_xlabel('Effort')
 ax.set_ylabel('Unknowns')
 ax.set_zlabel('Complexity')
     
-# Customize the view angle so it's easier to see that the scatter points lie
-# on the plane y=0
-ax.view_init(elev=20., azim=-35, roll=0)
-    
-pyscript.write("plot", ax)
+ax.view_init(elev=20., azim=-35)
+display(plt, target="graph-area", append=False)
+
   </py-script>
+  <div id="graph-area"></div>
+
 </body>
 </html>
