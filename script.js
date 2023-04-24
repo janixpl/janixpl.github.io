@@ -29,13 +29,13 @@ const data = [
         name: 'Spheres'
     },
     {
-        x: [0, 5],
-        y: [0, 5],
-        z: [0, 5],
+        x: [0, 6],
+        y: [0, 6],
+        z: [0, 6],
         mode: 'lines',
         line: {
             color: 'red',
-            width: 5
+            width: 6
         },
         type: 'scatter3d',
         name: 'Line'
