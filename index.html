@@ -156,8 +156,8 @@
             }
             .extra-box {
                 grid-column: span 7;
-                padding: 10px;
-                margin-top: 5px;
+                padding: 12px;
+                margin-top: 8px;
                 border: 1px solid var(--extra);
                 color: var(--extra);
                 text-align: center;
@@ -165,11 +165,21 @@
                 font-weight: bold;
                 display: flex;
                 flex-direction: column;
-                gap: 2px;
+                gap: 4px;
+                background: rgba(129, 140, 248, 0.1);
             }
-            .extra-label {
-                font-size: 0.6em;
-                opacity: 0.8;
+            /* POWIĘKSZONA CZCIONKA DNIA TYGODNIA */
+            .extra-day-name {
+                font-size: 1.2em;
+                color: #fff;
+                letter-spacing: 2px;
+                border-bottom: 1px solid rgba(129, 140, 248, 0.3);
+                padding-bottom: 2px;
+                margin-bottom: 2px;
+            }
+            .extra-info {
+                font-size: 0.7em;
+                opacity: 0.9;
             }
 
             .copy-btn {
@@ -293,27 +303,28 @@
                     }
                     html += `</div></div>`;
                 }
-
-                // Sekcja Stabilizacji z Dniami Tygodnia
+                // Sekcja Stabilizacji z wyraźnym dniem tygodnia
                 const active365 = dayOfYear === 365 ? "today" : "";
                 const active366 = dayOfYear === 366 ? "today" : "";
 
                 html += `<div class="month special">
-                <div class="month-num" style="color:var(--extra)">STABILIZACJA</div>
-                <div class="extra-box ${active365}">
-                    <span class="extra-label">DZIEŃ 365 (00) - ${getDayName(year, 365)}</span>
-                    <span>STAB I ${getMoon(ts + (365 - dayOfYear) * 86400)}</span>
-                </div>
-                ${
-                    isLeap
-                        ? `
-                <div class="extra-box ${active366}">
-                    <span class="extra-label">DZIEŃ 366 (++) - ${getDayName(year, 366)}</span>
-                    <span>STAB II ${getMoon(ts + (366 - dayOfYear) * 86400)}</span>
-                </div>`
-                        : ""
-                }
-            </div>`;
+                    <div class="month-num" style="color:var(--extra)">STABILIZACJA</div>
+
+                    <div class="extra-box ${active365}">
+                        <span class="extra-day-name">${getDayName(year, 365)}</span>
+                        <span class="extra-info">DZIEŃ 365 (00) ${getMoon(ts + (365 - dayOfYear) * 86400)}</span>
+                    </div>
+
+                    ${
+                        isLeap
+                            ? `
+                    <div class="extra-box ${active366}">
+                        <span class="extra-day-name">${getDayName(year, 366)}</span>
+                        <span class="extra-info">DZIEŃ 366 (++) ${getMoon(ts + (366 - dayOfYear) * 86400)}</span>
+                    </div>`
+                            : ""
+                    }
+                </div>`;
 
                 document.getElementById("calendar-container").innerHTML = html;
             }
