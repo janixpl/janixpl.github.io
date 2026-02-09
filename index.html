@@ -117,6 +117,15 @@
                 border: 1px solid #2d3748;
                 border-radius: 4px;
                 position: relative;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .day:hover:not(.empty) {
+                transform: scale(1.1);
+                border-color: var(--accent);
+                z-index: 10;
+                background: rgba(56, 189, 248, 0.2);
             }
 
             .day-num {
@@ -139,6 +148,7 @@
             .empty {
                 border: none;
                 background: transparent;
+                cursor: default;
             }
 
             .today {
@@ -166,7 +176,9 @@
                 flex-direction: column;
                 gap: 4px;
                 background: rgba(129, 140, 248, 0.1);
+                cursor: pointer;
             }
+
             .extra-day-name {
                 font-size: 1.2em;
                 color: #fff;
@@ -190,12 +202,39 @@
                 font-weight: bold;
             }
 
-            @media (max-width: 350px) {
-                .grid {
-                    grid-template-columns: 1fr;
-                }
-                body {
-                    padding: 10px;
+            /* Panel detali na dole */
+            #detail-panel {
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: var(--card);
+                border: 2px solid var(--accent);
+                padding: 12px 20px;
+                border-radius: 30px;
+                display: none;
+                align-items: center;
+                gap: 15px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+                z-index: 1000;
+                width: max-content;
+                max-width: 90vw;
+                color: white;
+            }
+
+            .close-detail {
+                cursor: pointer;
+                color: var(--extra);
+                font-weight: bold;
+                margin-left: 10px;
+            }
+
+            @media (max-width: 600px) {
+                #detail-panel {
+                    font-size: 0.8em;
+                    flex-direction: column;
+                    border-radius: 15px;
+                    text-align: center;
                 }
             }
         </style>
@@ -213,6 +252,19 @@
         </div>
 
         <div id="calendar-container" class="grid"></div>
+
+        <div id="detail-panel">
+            <div id="detail-content"></div>
+            <div
+                class="close-detail"
+                onclick="
+                    document.getElementById('detail-panel').style.display =
+                        'none'
+                "
+            >
+                [X]
+            </div>
+        </div>
 
         <script>
             const MOON_CYCLE = 2551442.8;
@@ -235,6 +287,13 @@
                 navigator.clipboard.writeText(
                     document.getElementById("ts").innerText,
                 );
+            }
+
+            function showDetail(greg, janixM, janixD, ts) {
+                const panel = document.getElementById("detail-panel");
+                const content = document.getElementById("detail-content");
+                panel.style.display = "flex";
+                content.innerHTML = `<strong>${greg}</strong> | Miesiąc ${janixM}, Dzień ${janixD} | TS: <span style="color:var(--today)">${ts}</span>`;
             }
 
             function getDayName(year, dayOfYear) {
@@ -293,11 +352,20 @@
                         const gridPos = (startOffset + d - 1) % 7;
                         const isWeekend =
                             gridPos === 5 || gridPos === 6 ? "weekend" : "";
-                        const dayTs = ts - (dayOfYear - currentAbsDay) * 86400;
 
-                        html += `<div class="day ${active} ${isWeekend}">
+                        const targetDate = new Date(year, 0, currentAbsDay);
+                        const gregStr = targetDate.toLocaleDateString("pl-PL", {
+                            day: "numeric",
+                            month: "long",
+                        });
+                        const targetTs = Math.floor(
+                            targetDate.getTime() / 1000,
+                        );
+
+                        html += `<div class="day ${active} ${isWeekend}"
+                             onclick="showDetail('${gregStr}', ${m + 1}, ${d}, ${targetTs})">
                         <span class="day-num">${d}</span>
-                        <span class="day-moon">${getMoon(dayTs)}</span>
+                        <span class="day-moon">${getMoon(targetTs)}</span>
                     </div>`;
                     }
                     html += `</div></div>`;
@@ -306,22 +374,36 @@
                 const active365 = dayOfYear === 365 ? "today" : "";
                 const active366 = dayOfYear === 366 ? "today" : "";
 
+                const greg365 = new Date(year, 0, 365).toLocaleDateString(
+                    "pl-PL",
+                    { day: "numeric", month: "long" },
+                );
+                const ts365 = Math.floor(
+                    new Date(year, 0, 365).getTime() / 1000,
+                );
+
                 html += `<div class="month special">
                 <div class="month-num" style="color:var(--extra)">STABILIZACJA ${year}</div>
-                <div class="extra-box ${active365}">
+                <div class="extra-box ${active365}" onclick="showDetail('${greg365}', 'X', '365', ${ts365})">
                     <span class="extra-day-name">${getDayName(year, 365)}</span>
-                    <span class="extra-info">DZIEŃ 365 (00) ${getMoon(ts + (365 - dayOfYear) * 86400)}</span>
-                </div>
-                ${
-                    isLeap
-                        ? `
-                <div class="extra-box ${active366}">
+                    <span class="extra-info">DZIEŃ 365 (00) ${getMoon(ts365)}</span>
+                </div>`;
+
+                if (isLeap) {
+                    const greg366 = new Date(year, 0, 366).toLocaleDateString(
+                        "pl-PL",
+                        { day: "numeric", month: "long" },
+                    );
+                    const ts366 = Math.floor(
+                        new Date(year, 0, 366).getTime() / 1000,
+                    );
+                    html += `
+                <div class="extra-box ${active366}" onclick="showDetail('${greg366}', 'X', '366', ${ts366})">
                     <span class="extra-day-name">${getDayName(year, 366)}</span>
-                    <span class="extra-info">DZIEŃ 366 (++) ${getMoon(ts + (366 - dayOfYear) * 86400)}</span>
-                </div>`
-                        : ""
+                    <span class="extra-info">DZIEŃ 366 (++) ${getMoon(ts366)}</span>
+                </div>`;
                 }
-            </div>`;
+                html += `</div>`;
 
                 document.getElementById("calendar-container").innerHTML = html;
             }
