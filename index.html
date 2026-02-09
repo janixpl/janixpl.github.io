@@ -1,16 +1,288 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Plotly JS 3D Scatter Plot</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <div class="container">
-        <div id="chart"></div>
-    </div>
+<!doctype html>
+<html lang="pl">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Janix Calendar System</title>
+        <style>
+            :root {
+                --bg: #0b0f1a;
+                --card: #161e2e;
+                --text: #e2e8f0;
+                --accent: #38bdf8;
+                --today: #fbbf24;
+                --extra: #818cf8;
+                --moon: #94a3b8;
+                --weekend: rgba(56, 189, 248, 0.08);
+            }
 
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <script src="script.js"></script>
-</body>
+            body {
+                font-family: "Courier New", monospace;
+                background: var(--bg);
+                color: var(--text);
+                margin: 0;
+                padding: 20px;
+                font-size: 13px;
+            }
+
+            .top-bar {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                margin-bottom: 25px;
+                border-bottom: 2px solid var(--accent);
+                padding-bottom: 15px;
+                flex-wrap: wrap;
+                gap: 15px;
+            }
+
+            .clock-section h1 {
+                margin: 0;
+                font-size: 1.4em;
+                letter-spacing: 2px;
+                color: var(--accent);
+            }
+            #cet-clock {
+                font-size: 1.1em;
+                color: #fff;
+                font-weight: bold;
+                margin-top: 5px;
+            }
+
+            .ts-display {
+                background: #000;
+                padding: 8px 12px;
+                border-radius: 6px;
+                border: 1px solid #334155;
+                display: flex;
+                align-items: center;
+                gap: 12px;
+            }
+            #ts {
+                color: var(--today);
+                font-weight: bold;
+            }
+
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, 260px);
+                gap: 20px;
+                justify-content: center;
+            }
+
+            .month {
+                background: var(--card);
+                border: 1px solid #2d3748;
+                border-radius: 12px;
+                padding: 12px;
+                width: 260px;
+                box-sizing: border-box;
+            }
+
+            .month-num {
+                font-weight: bold;
+                color: var(--accent);
+                margin-bottom: 12px;
+                font-size: 1.1em;
+                text-align: center;
+                border-bottom: 1px solid #2d3748;
+                padding-bottom: 5px;
+            }
+
+            .days-header {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 4px;
+                margin-bottom: 8px;
+                color: #64748b;
+                font-size: 0.7em;
+                text-align: center;
+                font-weight: bold;
+            }
+
+            .days-grid {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 4px;
+            }
+
+            .day {
+                aspect-ratio: 1 / 1;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                border: 1px solid #2d3748;
+                border-radius: 4px;
+                position: relative;
+            }
+
+            .day-num {
+                font-size: 0.9em;
+                font-weight: bold;
+            }
+            .day-moon {
+                font-size: 0.7em;
+                margin-top: 1px;
+            }
+
+            .weekend {
+                background: var(--weekend);
+                border-color: rgba(56, 189, 248, 0.2);
+            }
+            .weekend .day-num {
+                color: var(--accent);
+            }
+
+            .empty {
+                border: none;
+                background: transparent;
+            }
+
+            .today {
+                background: var(--today) !important;
+                color: #000 !important;
+                border-color: var(--today) !important;
+                transform: scale(1.08);
+                z-index: 5;
+                box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+            }
+
+            .special {
+                border: 2px dashed var(--extra);
+            }
+            .extra-box {
+                grid-column: span 7;
+                padding: 12px;
+                margin-top: 5px;
+                border: 1px solid var(--extra);
+                color: var(--extra);
+                text-align: center;
+                border-radius: 8px;
+                font-weight: bold;
+            }
+
+            .copy-btn {
+                background: var(--accent);
+                border: none;
+                color: #000;
+                padding: 4px 8px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 0.8em;
+                font-weight: bold;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="top-bar">
+            <div class="clock-section">
+                <h1>JANIX CALENDAR</h1>
+                <div id="cet-clock">Ładowanie czasu...</div>
+            </div>
+            <div class="ts-display">
+                <span>UNIX: <span id="ts">0</span></span>
+                <button class="copy-btn" onclick="copyTS()">COPY</button>
+            </div>
+        </div>
+
+        <div id="calendar-container" class="grid"></div>
+
+        <script>
+            const MOON_CYCLE = 2551442.8;
+            const KNOWN_NEW_MOON = 1705000000;
+
+            function getMoon(ts) {
+                const phase = ((ts - KNOWN_NEW_MOON) % MOON_CYCLE) / MOON_CYCLE;
+                if (phase < 0.06 || phase > 0.94) return "🌑";
+                if (phase < 0.19) return "🌒";
+                if (phase < 0.31) return "🌓";
+                if (phase < 0.44) return "🌔";
+                if (phase < 0.56) return "🌕";
+                if (phase < 0.69) return "🌖";
+                if (phase < 0.81) return "🌗";
+                return "🌘";
+            }
+
+            function copyTS() {
+                navigator.clipboard.writeText(
+                    document.getElementById("ts").innerText,
+                );
+            }
+
+            function update() {
+                const now = new Date();
+                const ts = Math.floor(now.getTime() / 1000);
+                const year = now.getFullYear();
+                const isLeap =
+                    (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+
+                // AKTUALIZACJA ZEGARA CET
+                document.getElementById("cet-clock").innerText = now
+                    .toLocaleString("pl-PL", {
+                        timeZone: "Europe/Warsaw",
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                    })
+                    .toUpperCase();
+
+                document.getElementById("ts").innerText = ts;
+
+                const jan1 = new Date(year, 0, 1);
+                let startOffset = jan1.getDay() - 1;
+                if (startOffset === -1) startOffset = 6;
+
+                const dayOfYear = Math.floor(
+                    (now - new Date(year, 0, 0)) / 86400000,
+                );
+
+                let html = "";
+                const labels = ["PN", "WT", "ŚR", "CZ", "PT", "SO", "ND"];
+
+                for (let m = 0; m < 13; m++) {
+                    html += `<div class="month">
+                    <div class="month-num">MIESIĄC ${m + 1}</div>
+                    <div class="days-header">${labels.map((l) => `<div>${l}</div>`).join("")}</div>
+                    <div class="days-grid">`;
+
+                    for (let e = 0; e < startOffset; e++)
+                        html += `<div class="day empty"></div>`;
+
+                    for (let d = 1; d <= 28; d++) {
+                        const currentAbsDay = m * 28 + d;
+                        const active =
+                            currentAbsDay === dayOfYear ? "today" : "";
+                        const gridPos = (startOffset + d - 1) % 7;
+                        const isWeekend =
+                            gridPos === 5 || gridPos === 6 ? "weekend" : "";
+                        const dayTs = ts - (dayOfYear - currentAbsDay) * 86400;
+
+                        html += `<div class="day ${active} ${isWeekend}">
+                        <span class="day-num">${d}</span>
+                        <span class="day-moon">${getMoon(dayTs)}</span>
+                    </div>`;
+                    }
+                    html += `</div></div>`;
+                }
+
+                // Sekcja Stabilizacji
+                const active365 = dayOfYear === 365 ? "today" : "";
+                const active366 = dayOfYear === 366 ? "today" : "";
+                html += `<div class="month special">
+                <div class="month-num" style="color:var(--extra)">STABILIZACJA</div>
+                <div class="extra-box ${active365}">365 (00) ${getMoon(ts + (365 - dayOfYear) * 86400)}</div>
+                ${isLeap ? `<div class="extra-box ${active366}">366 (++) ${getMoon(ts + (366 - dayOfYear) * 86400)}</div>` : ""}
+            </div>`;
+
+                document.getElementById("calendar-container").innerHTML = html;
+            }
+
+            setInterval(update, 1000);
+            update();
+        </script>
+    </body>
 </html>
