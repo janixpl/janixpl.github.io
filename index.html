@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Janix Calendar System</title>
+        <title>Janix Calendar System 2026</title>
         <style>
             :root {
                 --bg: #0b0f1a;
@@ -64,7 +64,6 @@
                 font-size: 0.9em;
             }
 
-            /* POPRAWKA GRIDA: Responsywność na telefonie */
             .grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -79,7 +78,7 @@
                 border-radius: 12px;
                 padding: 12px;
                 box-sizing: border-box;
-                width: 100%; /* Dopasowanie do kolumny grida */
+                width: 100%;
             }
 
             .month-num {
@@ -168,14 +167,12 @@
                 gap: 4px;
                 background: rgba(129, 140, 248, 0.1);
             }
-            /* POWIĘKSZONA CZCIONKA DNIA TYGODNIA */
             .extra-day-name {
                 font-size: 1.2em;
                 color: #fff;
                 letter-spacing: 2px;
                 border-bottom: 1px solid rgba(129, 140, 248, 0.3);
                 padding-bottom: 2px;
-                margin-bottom: 2px;
             }
             .extra-info {
                 font-size: 0.7em;
@@ -206,7 +203,7 @@
     <body>
         <div class="top-bar">
             <div class="clock-section">
-                <h1>JANIX CALENDAR</h1>
+                <h1 id="main-title">JANIX CALENDAR SYSTEM</h1>
                 <div id="cet-clock">...</div>
             </div>
             <div class="ts-display">
@@ -254,6 +251,8 @@
                 const isLeap =
                     (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 
+                document.getElementById("main-title").innerText =
+                    `JANIX CALENDAR ${year}`;
                 document.getElementById("cet-clock").innerText = now
                     .toLocaleString("pl-PL", {
                         timeZone: "Europe/Warsaw",
@@ -303,28 +302,26 @@
                     }
                     html += `</div></div>`;
                 }
-                // Sekcja Stabilizacji z wyraźnym dniem tygodnia
+
                 const active365 = dayOfYear === 365 ? "today" : "";
                 const active366 = dayOfYear === 366 ? "today" : "";
 
                 html += `<div class="month special">
-                    <div class="month-num" style="color:var(--extra)">STABILIZACJA</div>
-
-                    <div class="extra-box ${active365}">
-                        <span class="extra-day-name">${getDayName(year, 365)}</span>
-                        <span class="extra-info">DZIEŃ 365 (00) ${getMoon(ts + (365 - dayOfYear) * 86400)}</span>
-                    </div>
-
-                    ${
-                        isLeap
-                            ? `
-                    <div class="extra-box ${active366}">
-                        <span class="extra-day-name">${getDayName(year, 366)}</span>
-                        <span class="extra-info">DZIEŃ 366 (++) ${getMoon(ts + (366 - dayOfYear) * 86400)}</span>
-                    </div>`
-                            : ""
-                    }
-                </div>`;
+                <div class="month-num" style="color:var(--extra)">STABILIZACJA ${year}</div>
+                <div class="extra-box ${active365}">
+                    <span class="extra-day-name">${getDayName(year, 365)}</span>
+                    <span class="extra-info">DZIEŃ 365 (00) ${getMoon(ts + (365 - dayOfYear) * 86400)}</span>
+                </div>
+                ${
+                    isLeap
+                        ? `
+                <div class="extra-box ${active366}">
+                    <span class="extra-day-name">${getDayName(year, 366)}</span>
+                    <span class="extra-info">DZIEŃ 366 (++) ${getMoon(ts + (366 - dayOfYear) * 86400)}</span>
+                </div>`
+                        : ""
+                }
+            </div>`;
 
                 document.getElementById("calendar-container").innerHTML = html;
             }
