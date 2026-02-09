@@ -25,17 +25,6 @@
                 font-size: 13px;
             }
 
-            .timezone-badge {
-                font-size: 0.6em;
-                background: var(--accent);
-                color: #000;
-                padding: 2px 5px;
-                border-radius: 3px;
-                vertical-align: middle;
-                margin-left: 8px;
-                font-weight: bold;
-            }
-
             .top-bar {
                 display: flex;
                 justify-content: space-between;
@@ -53,11 +42,26 @@
                 letter-spacing: 1px;
                 color: var(--accent);
             }
+
             #cet-clock {
-                font-size: 0.95em;
+                font-size: 1em;
                 color: #fff;
                 font-weight: bold;
                 margin-top: 5px;
+                display: flex;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+
+            .timezone-badge {
+                font-size: 0.7em;
+                background: var(--accent);
+                color: #000;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-weight: bold;
+                display: inline-block;
             }
 
             .controls {
@@ -65,6 +69,7 @@
                 align-items: center;
                 gap: 10px;
             }
+
             .lang-btn {
                 background: #1e293b;
                 border: 1px solid var(--accent);
@@ -112,6 +117,7 @@
                 box-sizing: border-box;
                 width: 100%;
             }
+
             .month-num {
                 font-weight: bold;
                 color: var(--accent);
@@ -132,6 +138,7 @@
                 text-align: center;
                 font-weight: bold;
             }
+
             .days-grid {
                 display: grid;
                 grid-template-columns: repeat(7, 1fr);
@@ -156,6 +163,7 @@
                 z-index: 10;
                 background: rgba(56, 189, 248, 0.2);
             }
+
             .day-num {
                 font-size: 0.85em;
                 font-weight: bold;
@@ -172,6 +180,7 @@
             .weekend .day-num {
                 color: var(--accent);
             }
+
             .empty {
                 border: none;
                 background: transparent;
@@ -190,6 +199,7 @@
             .special {
                 border: 2px dashed var(--extra);
             }
+
             .extra-box {
                 grid-column: span 7;
                 padding: 12px;
@@ -205,6 +215,7 @@
                 background: rgba(129, 140, 248, 0.1);
                 cursor: pointer;
             }
+
             .extra-day-name {
                 font-size: 1.2em;
                 color: #fff;
@@ -212,6 +223,7 @@
                 border-bottom: 1px solid rgba(129, 140, 248, 0.3);
                 padding-bottom: 2px;
             }
+
             .extra-info {
                 font-size: 0.7em;
                 opacity: 0.9;
@@ -235,6 +247,7 @@
                 max-width: 90vw;
                 color: white;
             }
+
             .close-detail {
                 cursor: pointer;
                 color: var(--extra);
@@ -335,6 +348,9 @@
                 navigator.clipboard.writeText(
                     document.getElementById("ts").innerText,
                 );
+                const btn = document.querySelector(".copy-btn");
+                btn.innerText = "OK!";
+                setTimeout(() => (btn.innerText = "COPY"), 1000);
             }
 
             function showDetail(greg, janixM, janixD, ts) {
@@ -360,33 +376,18 @@
                     (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
                 const t = i18n[currentLang];
 
-                // Wykrywanie strefy (CET/CEST)
-                const tzName = String(
-                    now.toLocaleTimeString("pl-PL", { timeZoneName: "short" }),
+                // Pobieranie skrótu strefy (CET/CEST)
+                const tzName = new Intl.DateTimeFormat(
+                    currentLang === "pl" ? "pl-PL" : "en-US",
+                    {
+                        timeZone: "Europe/Warsaw",
+                        timeZoneName: "short",
+                    },
                 )
-                    .split(" ")
-                    .pop();
+                    .formatToParts(now)
+                    .find((p) => p.type === "timeZoneName").value;
 
-                document.getElementById("cet-clock").innerHTML =
-                    now
-                        .toLocaleString(
-                            currentLang === "pl" ? "pl-PL" : "en-US",
-                            {
-                                timeZone: "Europe/Warsaw",
-                                weekday: "long",
-                                day: "numeric",
-                                month: "long",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                second: "2-digit",
-                            },
-                        )
-                        .toUpperCase() +
-                    `<span class="timezone-badge">${tzName}</span>`;
-
-                document.getElementById("main-title").innerText =
-                    `JANIX CALENDAR ${year}`;
-                document.getElementById("cet-clock").innerHTML = now
+                const timeStr = now
                     .toLocaleString(currentLang === "pl" ? "pl-PL" : "en-US", {
                         timeZone: "Europe/Warsaw",
                         weekday: "long",
@@ -398,7 +399,11 @@
                     })
                     .toUpperCase();
 
+                document.getElementById("cet-clock").innerHTML =
+                    `${timeStr} <span class="timezone-badge">${tzName}</span>`;
                 document.getElementById("ts").innerText = ts;
+                document.getElementById("main-title").innerText =
+                    `JANIX CALENDAR ${year}`;
 
                 const jan1 = new Date(year, 0, 1);
                 let startOffset = jan1.getDay() - 1;
@@ -482,17 +487,36 @@
                 document.getElementById("ts").innerText = Math.floor(
                     now.getTime() / 1000,
                 );
-                // Pełny update co sekundę tylko dla zegara, kalendarz rzadziej dla wydajności
-                if (now.getSeconds() === 0) update();
+                // Pełny update co minutę lub przy zmianie sekundy na 0, aby odświeżyć zegar
+                const timeStr = now
+                    .toLocaleString(currentLang === "pl" ? "pl-PL" : "en-US", {
+                        timeZone: "Europe/Warsaw",
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                    })
+                    .toUpperCase();
+
+                // Pobieranie strefy
+                const tzName = new Intl.DateTimeFormat(
+                    currentLang === "pl" ? "pl-PL" : "en-US",
+                    {
+                        timeZone: "Europe/Warsaw",
+                        timeZoneName: "short",
+                    },
+                )
+                    .formatToParts(now)
+                    .find((p) => p.type === "timeZoneName").value;
+
+                document.getElementById("cet-clock").innerHTML =
+                    `${timeStr} <span class="timezone-badge">${tzName}</span>`;
+
+                // Pełny przerywnik kalendarza raz na godzinę lub przy starcie
             }, 1000);
 
-            // Inicjalizacja zegara i kalendarza
-            setInterval(() => {
-                const now = new Date();
-                document.getElementById("ts").innerText = Math.floor(
-                    now.getTime() / 1000,
-                );
-            }, 1000);
             update();
         </script>
     </body>
