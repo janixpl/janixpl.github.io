@@ -21,7 +21,7 @@
                 background: var(--bg);
                 color: var(--text);
                 margin: 0;
-                padding: 20px;
+                padding: 15px;
                 font-size: 13px;
             }
 
@@ -38,12 +38,12 @@
 
             .clock-section h1 {
                 margin: 0;
-                font-size: 1.4em;
-                letter-spacing: 2px;
+                font-size: 1.3em;
+                letter-spacing: 1px;
                 color: var(--accent);
             }
             #cet-clock {
-                font-size: 1.1em;
+                font-size: 1em;
                 color: #fff;
                 font-weight: bold;
                 margin-top: 5px;
@@ -56,18 +56,21 @@
                 border: 1px solid #334155;
                 display: flex;
                 align-items: center;
-                gap: 12px;
+                gap: 10px;
             }
             #ts {
                 color: var(--today);
                 font-weight: bold;
+                font-size: 0.9em;
             }
 
+            /* POPRAWKA GRIDA: Responsywność na telefonie */
             .grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, 260px);
-                gap: 20px;
-                justify-content: center;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 15px;
+                max-width: 1400px;
+                margin: 0 auto;
             }
 
             .month {
@@ -75,8 +78,8 @@
                 border: 1px solid #2d3748;
                 border-radius: 12px;
                 padding: 12px;
-                width: 260px;
                 box-sizing: border-box;
+                width: 100%; /* Dopasowanie do kolumny grida */
             }
 
             .month-num {
@@ -92,7 +95,7 @@
             .days-header {
                 display: grid;
                 grid-template-columns: repeat(7, 1fr);
-                gap: 4px;
+                gap: 2px;
                 margin-bottom: 8px;
                 color: #64748b;
                 font-size: 0.7em;
@@ -118,11 +121,11 @@
             }
 
             .day-num {
-                font-size: 0.9em;
+                font-size: 0.85em;
                 font-weight: bold;
             }
             .day-moon {
-                font-size: 0.7em;
+                font-size: 0.65em;
                 margin-top: 1px;
             }
 
@@ -143,9 +146,9 @@
                 background: var(--today) !important;
                 color: #000 !important;
                 border-color: var(--today) !important;
-                transform: scale(1.08);
-                z-index: 5;
-                box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+                transform: scale(1.05);
+                z-index: 2;
+                box-shadow: 0 0 10px rgba(251, 191, 36, 0.4);
             }
 
             .special {
@@ -153,13 +156,20 @@
             }
             .extra-box {
                 grid-column: span 7;
-                padding: 12px;
+                padding: 10px;
                 margin-top: 5px;
                 border: 1px solid var(--extra);
                 color: var(--extra);
                 text-align: center;
                 border-radius: 8px;
                 font-weight: bold;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            .extra-label {
+                font-size: 0.6em;
+                opacity: 0.8;
             }
 
             .copy-btn {
@@ -169,8 +179,17 @@
                 padding: 4px 8px;
                 border-radius: 4px;
                 cursor: pointer;
-                font-size: 0.8em;
+                font-size: 0.75em;
                 font-weight: bold;
+            }
+
+            @media (max-width: 350px) {
+                .grid {
+                    grid-template-columns: 1fr;
+                }
+                body {
+                    padding: 10px;
+                }
             }
         </style>
     </head>
@@ -178,10 +197,10 @@
         <div class="top-bar">
             <div class="clock-section">
                 <h1>JANIX CALENDAR</h1>
-                <div id="cet-clock">Ładowanie czasu...</div>
+                <div id="cet-clock">...</div>
             </div>
             <div class="ts-display">
-                <span>UNIX: <span id="ts">0</span></span>
+                <span>UNIX:<span id="ts">0</span></span>
                 <button class="copy-btn" onclick="copyTS()">COPY</button>
             </div>
         </div>
@@ -191,6 +210,7 @@
         <script>
             const MOON_CYCLE = 2551442.8;
             const KNOWN_NEW_MOON = 1705000000;
+            const labels = ["PN", "WT", "ŚR", "CZ", "PT", "SO", "ND"];
 
             function getMoon(ts) {
                 const phase = ((ts - KNOWN_NEW_MOON) % MOON_CYCLE) / MOON_CYCLE;
@@ -210,6 +230,13 @@
                 );
             }
 
+            function getDayName(year, dayOfYear) {
+                const date = new Date(year, 0, dayOfYear);
+                let dayIndex = date.getDay() - 1;
+                if (dayIndex === -1) dayIndex = 6;
+                return labels[dayIndex];
+            }
+
             function update() {
                 const now = new Date();
                 const ts = Math.floor(now.getTime() / 1000);
@@ -217,7 +244,6 @@
                 const isLeap =
                     (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 
-                // AKTUALIZACJA ZEGARA CET
                 document.getElementById("cet-clock").innerText = now
                     .toLocaleString("pl-PL", {
                         timeZone: "Europe/Warsaw",
@@ -241,7 +267,6 @@
                 );
 
                 let html = "";
-                const labels = ["PN", "WT", "ŚR", "CZ", "PT", "SO", "ND"];
 
                 for (let m = 0; m < 13; m++) {
                     html += `<div class="month">
@@ -269,13 +294,25 @@
                     html += `</div></div>`;
                 }
 
-                // Sekcja Stabilizacji
+                // Sekcja Stabilizacji z Dniami Tygodnia
                 const active365 = dayOfYear === 365 ? "today" : "";
                 const active366 = dayOfYear === 366 ? "today" : "";
+
                 html += `<div class="month special">
                 <div class="month-num" style="color:var(--extra)">STABILIZACJA</div>
-                <div class="extra-box ${active365}">365 (00) ${getMoon(ts + (365 - dayOfYear) * 86400)}</div>
-                ${isLeap ? `<div class="extra-box ${active366}">366 (++) ${getMoon(ts + (366 - dayOfYear) * 86400)}</div>` : ""}
+                <div class="extra-box ${active365}">
+                    <span class="extra-label">DZIEŃ 365 (00) - ${getDayName(year, 365)}</span>
+                    <span>STAB I ${getMoon(ts + (365 - dayOfYear) * 86400)}</span>
+                </div>
+                ${
+                    isLeap
+                        ? `
+                <div class="extra-box ${active366}">
+                    <span class="extra-label">DZIEŃ 366 (++) - ${getDayName(year, 366)}</span>
+                    <span>STAB II ${getMoon(ts + (366 - dayOfYear) * 86400)}</span>
+                </div>`
+                        : ""
+                }
             </div>`;
 
                 document.getElementById("calendar-container").innerHTML = html;
