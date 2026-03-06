@@ -272,19 +272,13 @@
             <div class="clock-section">
                 <div class="controls">
                     <h1 id="main-title">JANIX CALENDAR</h1>
-                    <button
-                        class="lang-btn"
-                        onclick="toggleLang()"
-                        id="lang-btn"
-                    >
-                        EN
-                    </button>
+                    <button class="lang-btn" id="lang-btn">EN</button>
                 </div>
                 <div id="cet-clock">...</div>
             </div>
             <div class="ts-display">
                 <span>UNIX:<span id="ts">0</span></span>
-                <button class="copy-btn" onclick="copyTS()">COPY</button>
+                <button class="copy-btn" id="copy-btn">COPY</button>
             </div>
         </div>
 
@@ -292,19 +286,19 @@
 
         <div id="detail-panel">
             <div id="detail-content"></div>
-            <div
-                class="close-detail"
-                onclick="
-                    document.getElementById('detail-panel').style.display =
-                        'none'
-                "
-            >
-                [X]
-            </div>
+            <div class="close-detail" id="close-detail">[X]</div>
         </div>
 
         <script>
+            // --- State ---
             let currentLang = "pl";
+
+            // --- Constants ---
+            const TZ = "Europe/Warsaw";
+
+            const MOON_CYCLE = 2551442.8;
+            const KNOWN_NEW_MOON = 1705000000;
+
             const i18n = {
                 pl: {
                     month: "MIESIĄC",
@@ -322,15 +316,9 @@
                 },
             };
 
-            const MOON_CYCLE = 2551442.8;
-            const KNOWN_NEW_MOON = 1705000000;
+            // --- Helpers ---
 
-            function toggleLang() {
-                currentLang = currentLang === "pl" ? "en" : "pl";
-                document.getElementById("lang-btn").innerText =
-                    currentLang === "pl" ? "EN" : "PL";
-                update();
-            }
+            const getLocale = () => (currentLang === "pl" ? "pl-PL" : "en-US");
 
             function getMoon(ts) {
                 const phase = ((ts - KNOWN_NEW_MOON) % MOON_CYCLE) / MOON_CYCLE;
@@ -344,23 +332,6 @@
                 return "🌘";
             }
 
-            function copyTS() {
-                navigator.clipboard.writeText(
-                    document.getElementById("ts").innerText,
-                );
-                const btn = document.querySelector(".copy-btn");
-                btn.innerText = "OK!";
-                setTimeout(() => (btn.innerText = "COPY"), 1000);
-            }
-
-            function showDetail(greg, janixM, janixD, ts) {
-                const panel = document.getElementById("detail-panel");
-                const content = document.getElementById("detail-content");
-                panel.style.display = "flex";
-                const t = i18n[currentLang];
-                content.innerHTML = `<strong>${greg}</strong> | ${t.detailM} ${janixM}, ${t.detailD} ${janixD} | TS: <span style="color:var(--today)">${ts}</span>`;
-            }
-
             function getDayName(year, dayOfYear) {
                 const date = new Date(year, 0, dayOfYear);
                 let dayIndex = date.getDay() - 1;
@@ -368,28 +339,10 @@
                 return i18n[currentLang].days[dayIndex];
             }
 
-            function update() {
-                const now = new Date();
-                const ts = Math.floor(now.getTime() / 1000);
-                const year = now.getFullYear();
-                const isLeap =
-                    (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-                const t = i18n[currentLang];
-
-                // Pobieranie skrótu strefy (CET/CEST)
-                const tzName = new Intl.DateTimeFormat(
-                    currentLang === "pl" ? "pl-PL" : "en-US",
-                    {
-                        timeZone: "Europe/Warsaw",
-                        timeZoneName: "short",
-                    },
-                )
-                    .formatToParts(now)
-                    .find((p) => p.type === "timeZoneName").value;
-
-                const timeStr = now
-                    .toLocaleString(currentLang === "pl" ? "pl-PL" : "en-US", {
-                        timeZone: "Europe/Warsaw",
+            function getTimeStr(date) {
+                return date
+                    .toLocaleString(getLocale(), {
+                        timeZone: TZ,
                         weekday: "long",
                         day: "numeric",
                         month: "long",
@@ -398,12 +351,129 @@
                         second: "2-digit",
                     })
                     .toUpperCase();
+            }
 
+            function getTZName(date) {
+                return new Intl.DateTimeFormat(getLocale(), {
+                    timeZone: TZ,
+                    timeZoneName: "short",
+                })
+                    .formatToParts(date)
+                    .find((p) => p.type === "timeZoneName").value;
+            }
+
+            // --- Rendering ---
+
+            function renderClock(date) {
                 document.getElementById("cet-clock").innerHTML =
-                    `${timeStr} <span class="timezone-badge">${tzName}</span>`;
-                document.getElementById("ts").innerText = ts;
-                document.getElementById("main-title").innerText =
-                    `JANIX CALENDAR ${year}`;
+                    `${getTimeStr(date)} <span class="timezone-badge">${getTZName(date)}</span>`;
+            }
+
+            function renderMonth(m, startOffset, dayOfYear, year) {
+                const t = i18n[currentLang];
+                const locale = getLocale();
+
+                let html = `<div class="month">
+                    <div class="month-num">${t.month} ${m + 1}</div>
+                    <div class="days-header">${t.days.map((l) => `<div>${l}</div>`).join("")}</div>
+                    <div class="days-grid">`;
+
+                for (let e = 0; e < startOffset; e++)
+                    html += `<div class="day empty"></div>`;
+
+                for (let d = 1; d <= 28; d++) {
+                    const absDay = m * 28 + d;
+                    const isToday = absDay === dayOfYear;
+                    const gridPos = (startOffset + d - 1) % 7;
+                    const isWeekend = gridPos === 5 || gridPos === 6;
+                    const date = new Date(year, 0, absDay);
+                    const gregStr = date.toLocaleDateString(locale, {
+                        day: "numeric",
+                        month: "long",
+                    });
+                    const ts = Math.floor(date.getTime() / 1000);
+
+                    html += `<div class="day${isToday ? " today" : ""}${isWeekend ? " weekend" : ""}"
+                             data-greg="${gregStr}" data-m="${m + 1}" data-d="${d}" data-ts="${ts}">
+                        <span class="day-num">${d}</span>
+                        <span class="day-moon">${getMoon(ts)}</span>
+                    </div>`;
+                }
+
+                html += `</div></div>`;
+                return html;
+            }
+
+            function renderExtraDays(isLeap, year, dayOfYear) {
+                const t = i18n[currentLang];
+                const locale = getLocale();
+
+                const date365 = new Date(year, 0, 365);
+                const ts365 = Math.floor(date365.getTime() / 1000);
+                const greg365 = date365.toLocaleDateString(locale, {
+                    day: "numeric",
+                    month: "long",
+                });
+
+                let html = `<div class="month special">
+                    <div class="month-num" style="color:var(--extra)">${t.stab} ${year}</div>
+                    <div class="extra-box${dayOfYear === 365 ? " today" : ""}"
+                         data-greg="${greg365}" data-m="X" data-d="365" data-ts="${ts365}">
+                        <span class="extra-day-name">${getDayName(year, 365)}</span>
+                        <span class="extra-info">DAY 365 (00) ${getMoon(ts365)}</span>
+                    </div>`;
+
+                if (isLeap) {
+                    const date366 = new Date(year, 0, 366);
+                    const ts366 = Math.floor(date366.getTime() / 1000);
+                    const greg366 = date366.toLocaleDateString(locale, {
+                        day: "numeric",
+                        month: "long",
+                    });
+
+                    html += `<div class="extra-box${dayOfYear === 366 ? " today" : ""}"
+                         data-greg="${greg366}" data-m="X" data-d="366" data-ts="${ts366}">
+                        <span class="extra-day-name">${getDayName(year, 366)}</span>
+                        <span class="extra-info">DAY 366 (++) ${getMoon(ts366)}</span>
+                    </div>`;
+                }
+
+                html += `</div>`;
+                return html;
+            }
+
+            // --- Actions ---
+
+            function showDetail(greg, janixM, janixD, ts) {
+                const t = i18n[currentLang];
+                document.getElementById("detail-content").innerHTML =
+                    `<strong>${greg}</strong> | ${t.detailM} ${janixM}, ${t.detailD} ${janixD} | TS: <span style="color:var(--today)">${ts}</span>`;
+                document.getElementById("detail-panel").style.display = "flex";
+            }
+
+            function copyTS() {
+                navigator.clipboard.writeText(
+                    document.getElementById("ts").innerText,
+                );
+                const btn = document.getElementById("copy-btn");
+                btn.innerText = "OK!";
+                setTimeout(() => (btn.innerText = "COPY"), 1000);
+            }
+
+            function toggleLang() {
+                currentLang = currentLang === "pl" ? "en" : "pl";
+                document.getElementById("lang-btn").innerText =
+                    currentLang === "pl" ? "EN" : "PL";
+                update();
+            }
+
+            // --- Main update (rebuilds the full calendar) ---
+
+            function update() {
+                const now = new Date();
+                const year = now.getFullYear();
+                const isLeap =
+                    (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
 
                 const jan1 = new Date(year, 0, 1);
                 let startOffset = jan1.getDay() - 1;
@@ -412,112 +482,61 @@
                 const dayOfYear = Math.floor(
                     (now - new Date(year, 0, 0)) / 86400000,
                 );
+
+                document.getElementById("main-title").innerText =
+                    `JANIX CALENDAR ${year}`;
+
                 let html = "";
-
                 for (let m = 0; m < 13; m++) {
-                    html += `<div class="month">
-                    <div class="month-num">${t.month} ${m + 1}</div>
-                    <div class="days-header">${t.days.map((l) => `<div>${l}</div>`).join("")}</div>
-                    <div class="days-grid">`;
-
-                    for (let e = 0; e < startOffset; e++)
-                        html += `<div class="day empty"></div>`;
-
-                    for (let d = 1; d <= 28; d++) {
-                        const currentAbsDay = m * 28 + d;
-                        const active =
-                            currentAbsDay === dayOfYear ? "today" : "";
-                        const gridPos = (startOffset + d - 1) % 7;
-                        const isWeekend =
-                            gridPos === 5 || gridPos === 6 ? "weekend" : "";
-                        const targetDate = new Date(year, 0, currentAbsDay);
-                        const gregStr = targetDate.toLocaleDateString(
-                            currentLang === "pl" ? "pl-PL" : "en-US",
-                            { day: "numeric", month: "long" },
-                        );
-                        const targetTs = Math.floor(
-                            targetDate.getTime() / 1000,
-                        );
-
-                        html += `<div class="day ${active} ${isWeekend}"
-                             onclick="showDetail('${gregStr}', ${m + 1}, ${d}, ${targetTs})">
-                        <span class="day-num">${d}</span>
-                        <span class="day-moon">${getMoon(targetTs)}</span>
-                    </div>`;
-                    }
-                    html += `</div></div>`;
+                    html += renderMonth(m, startOffset, dayOfYear, year);
                 }
+                html += renderExtraDays(isLeap, year, dayOfYear);
 
-                const active365 = dayOfYear === 365 ? "today" : "";
-                const ts365 = Math.floor(
-                    new Date(year, 0, 365).getTime() / 1000,
-                );
-                const greg365 = new Date(year, 0, 365).toLocaleDateString(
-                    currentLang === "pl" ? "pl-PL" : "en-US",
-                    { day: "numeric", month: "long" },
-                );
+                const container = document.getElementById("calendar-container");
+                container.innerHTML = html;
 
-                html += `<div class="month special">
-                <div class="month-num" style="color:var(--extra)">${t.stab} ${year}</div>
-                <div class="extra-box ${active365}" onclick="showDetail('${greg365}', 'X', '365', ${ts365})">
-                    <span class="extra-day-name">${getDayName(year, 365)}</span>
-                    <span class="extra-info">DAY 365 (00) ${getMoon(ts365)}</span>
-                </div>`;
-
-                if (isLeap) {
-                    const ts366 = Math.floor(
-                        new Date(year, 0, 366).getTime() / 1000,
-                    );
-                    const greg366 = new Date(year, 0, 366).toLocaleDateString(
-                        currentLang === "pl" ? "pl-PL" : "en-US",
-                        { day: "numeric", month: "long" },
-                    );
-                    html += `
-                <div class="extra-box ${dayOfYear === 366 ? "today" : ""}" onclick="showDetail('${greg366}', 'X', '366', ${ts366})">
-                    <span class="extra-day-name">${getDayName(year, 366)}</span>
-                    <span class="extra-info">DAY 366 (++) ${getMoon(ts366)}</span>
-                </div>`;
-                }
-                html += `</div>`;
-                document.getElementById("calendar-container").innerHTML = html;
+                container
+                    .querySelectorAll(".day:not(.empty), .extra-box")
+                    .forEach((el) => {
+                        el.addEventListener("click", () => {
+                            showDetail(
+                                el.dataset.greg,
+                                el.dataset.m,
+                                el.dataset.d,
+                                el.dataset.ts,
+                            );
+                        });
+                    });
             }
 
-            setInterval(() => {
+            // --- Tick (runs every second, no calendar rebuild) ---
+
+            function tick() {
                 const now = new Date();
                 document.getElementById("ts").innerText = Math.floor(
                     now.getTime() / 1000,
                 );
-                // Pełny update co minutę lub przy zmianie sekundy na 0, aby odświeżyć zegar
-                const timeStr = now
-                    .toLocaleString(currentLang === "pl" ? "pl-PL" : "en-US", {
-                        timeZone: "Europe/Warsaw",
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                    })
-                    .toUpperCase();
+                renderClock(now);
+            }
 
-                // Pobieranie strefy
-                const tzName = new Intl.DateTimeFormat(
-                    currentLang === "pl" ? "pl-PL" : "en-US",
-                    {
-                        timeZone: "Europe/Warsaw",
-                        timeZoneName: "short",
-                    },
-                )
-                    .formatToParts(now)
-                    .find((p) => p.type === "timeZoneName").value;
+            // --- Init ---
 
-                document.getElementById("cet-clock").innerHTML =
-                    `${timeStr} <span class="timezone-badge">${tzName}</span>`;
-
-                // Pełny przerywnik kalendarza raz na godzinę lub przy starcie
-            }, 1000);
+            document
+                .getElementById("lang-btn")
+                .addEventListener("click", toggleLang);
+            document
+                .getElementById("copy-btn")
+                .addEventListener("click", copyTS);
+            document
+                .getElementById("close-detail")
+                .addEventListener("click", () => {
+                    document.getElementById("detail-panel").style.display =
+                        "none";
+                });
 
             update();
+            tick();
+            setInterval(tick, 1000);
         </script>
     </body>
 </html>
